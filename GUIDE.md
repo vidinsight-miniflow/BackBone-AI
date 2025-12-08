@@ -88,7 +88,7 @@ Kontrol: Hedef tablo users (User) mevcut.
 Kontrol: İlişki hedefi (User sınıfı) onaylandı.
 ```
 
-<img width="6688" height="5650" alt="Untitled-2025-02-03-2010" src="https://github.com/user-attachments/assets/c16511cd-59f5-443c-b859-dc27c8ce1d72" />
+<img width="6688" height="5650" alt="image" src="https://github.com/user-attachments/assets/c0da26a5-dda2-432e-93cd-01782232f06f" />
 
 
 Proje kapsamıında JSON yapıları ve plan yapısını gelişmelere ve ihtiyaçlara göre güncelelyebilirsin. Test yazma kısmı öncelikli değil sadece olsa güzel olur.
