@@ -1,0 +1,304 @@
+{
+  "project_name": "ECommerce",
+  "db_type": "postgresql",
+  "description": "E-commerce system with users, products, orders, and reviews",
+  "schema": [
+    {
+      "table_name": "users",
+      "class_name": "User",
+      "description": "User accounts",
+      "options": {
+        "use_timestamps": true,
+        "use_soft_delete": true
+      },
+      "columns": [
+        {
+          "name": "id",
+          "type": "Integer",
+          "primary_key": true,
+          "autoincrement": true
+        },
+        {
+          "name": "username",
+          "type": "String",
+          "length": 50,
+          "unique": true,
+          "nullable": false,
+          "index": true
+        },
+        {
+          "name": "email",
+          "type": "String",
+          "length": 100,
+          "unique": true,
+          "nullable": false
+        },
+        {
+          "name": "role",
+          "type": "Enum",
+          "values": ["customer", "seller", "admin"],
+          "default": "customer",
+          "nullable": false
+        }
+      ],
+      "relationships": [
+        {
+          "target_table": "products",
+          "target_class": "Product",
+          "type": "one_to_many",
+          "back_populates": "seller"
+        },
+        {
+          "target_table": "orders",
+          "target_class": "Order",
+          "type": "one_to_many",
+          "back_populates": "customer"
+        },
+        {
+          "target_table": "reviews",
+          "target_class": "Review",
+          "type": "one_to_many",
+          "back_populates": "user"
+        }
+      ]
+    },
+    {
+      "table_name": "products",
+      "class_name": "Product",
+      "description": "Product catalog",
+      "options": {
+        "use_timestamps": true,
+        "use_soft_delete": true
+      },
+      "columns": [
+        {
+          "name": "id",
+          "type": "Integer",
+          "primary_key": true,
+          "autoincrement": true
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "length": 200,
+          "nullable": false
+        },
+        {
+          "name": "description",
+          "type": "Text",
+          "nullable": true
+        },
+        {
+          "name": "price",
+          "type": "Numeric",
+          "precision": 10,
+          "scale": 2,
+          "nullable": false
+        },
+        {
+          "name": "stock",
+          "type": "Integer",
+          "default": 0,
+          "nullable": false
+        },
+        {
+          "name": "seller_id",
+          "type": "ForeignKey",
+          "target": "users.id",
+          "nullable": false,
+          "on_delete": "CASCADE"
+        }
+      ],
+      "relationships": [
+        {
+          "target_table": "users",
+          "target_class": "User",
+          "type": "many_to_one",
+          "back_populates": "products",
+          "foreign_key": "seller_id"
+        },
+        {
+          "target_table": "order_items",
+          "target_class": "OrderItem",
+          "type": "one_to_many",
+          "back_populates": "product"
+        },
+        {
+          "target_table": "reviews",
+          "target_class": "Review",
+          "type": "one_to_many",
+          "back_populates": "product"
+        }
+      ]
+    },
+    {
+      "table_name": "orders",
+      "class_name": "Order",
+      "description": "Customer orders",
+      "options": {
+        "use_timestamps": true,
+        "use_soft_delete": false
+      },
+      "columns": [
+        {
+          "name": "id",
+          "type": "Integer",
+          "primary_key": true,
+          "autoincrement": true
+        },
+        {
+          "name": "customer_id",
+          "type": "ForeignKey",
+          "target": "users.id",
+          "nullable": false,
+          "on_delete": "CASCADE"
+        },
+        {
+          "name": "status",
+          "type": "Enum",
+          "values": ["pending", "processing", "shipped", "delivered", "cancelled"],
+          "default": "pending",
+          "nullable": false
+        },
+        {
+          "name": "total_amount",
+          "type": "Numeric",
+          "precision": 10,
+          "scale": 2,
+          "nullable": false
+        }
+      ],
+      "relationships": [
+        {
+          "target_table": "users",
+          "target_class": "User",
+          "type": "many_to_one",
+          "back_populates": "orders",
+          "foreign_key": "customer_id"
+        },
+        {
+          "target_table": "order_items",
+          "target_class": "OrderItem",
+          "type": "one_to_many",
+          "back_populates": "order"
+        }
+      ]
+    },
+    {
+      "table_name": "order_items",
+      "class_name": "OrderItem",
+      "description": "Items in an order",
+      "options": {
+        "use_timestamps": false,
+        "use_soft_delete": false
+      },
+      "columns": [
+        {
+          "name": "id",
+          "type": "Integer",
+          "primary_key": true,
+          "autoincrement": true
+        },
+        {
+          "name": "order_id",
+          "type": "ForeignKey",
+          "target": "orders.id",
+          "nullable": false,
+          "on_delete": "CASCADE"
+        },
+        {
+          "name": "product_id",
+          "type": "ForeignKey",
+          "target": "products.id",
+          "nullable": false,
+          "on_delete": "RESTRICT"
+        },
+        {
+          "name": "quantity",
+          "type": "Integer",
+          "nullable": false
+        },
+        {
+          "name": "unit_price",
+          "type": "Numeric",
+          "precision": 10,
+          "scale": 2,
+          "nullable": false
+        }
+      ],
+      "relationships": [
+        {
+          "target_table": "orders",
+          "target_class": "Order",
+          "type": "many_to_one",
+          "back_populates": "items",
+          "foreign_key": "order_id"
+        },
+        {
+          "target_table": "products",
+          "target_class": "Product",
+          "type": "many_to_one",
+          "back_populates": "order_items",
+          "foreign_key": "product_id"
+        }
+      ]
+    },
+    {
+      "table_name": "reviews",
+      "class_name": "Review",
+      "description": "Product reviews",
+      "options": {
+        "use_timestamps": true,
+        "use_soft_delete": true
+      },
+      "columns": [
+        {
+          "name": "id",
+          "type": "Integer",
+          "primary_key": true,
+          "autoincrement": true
+        },
+        {
+          "name": "product_id",
+          "type": "ForeignKey",
+          "target": "products.id",
+          "nullable": false,
+          "on_delete": "CASCADE"
+        },
+        {
+          "name": "user_id",
+          "type": "ForeignKey",
+          "target": "users.id",
+          "nullable": false,
+          "on_delete": "CASCADE"
+        },
+        {
+          "name": "rating",
+          "type": "Integer",
+          "nullable": false
+        },
+        {
+          "name": "comment",
+          "type": "Text",
+          "nullable": true
+        }
+      ],
+      "relationships": [
+        {
+          "target_table": "products",
+          "target_class": "Product",
+          "type": "many_to_one",
+          "back_populates": "reviews",
+          "foreign_key": "product_id"
+        },
+        {
+          "target_table": "users",
+          "target_class": "User",
+          "type": "many_to_one",
+          "back_populates": "reviews",
+          "foreign_key": "user_id"
+        }
+      ]
+    }
+  ]
+}

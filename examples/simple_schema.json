@@ -1,0 +1,116 @@
+{
+  "project_name": "SimpleBlog",
+  "db_type": "postgresql",
+  "description": "A simple blog system with users and posts",
+  "schema": [
+    {
+      "table_name": "users",
+      "class_name": "User",
+      "description": "User accounts",
+      "options": {
+        "use_timestamps": true,
+        "use_soft_delete": false
+      },
+      "columns": [
+        {
+          "name": "id",
+          "type": "Integer",
+          "primary_key": true,
+          "autoincrement": true,
+          "description": "Primary key"
+        },
+        {
+          "name": "username",
+          "type": "String",
+          "length": 50,
+          "unique": true,
+          "nullable": false,
+          "index": true,
+          "description": "Unique username"
+        },
+        {
+          "name": "email",
+          "type": "String",
+          "length": 100,
+          "unique": true,
+          "nullable": false,
+          "description": "User email"
+        },
+        {
+          "name": "status",
+          "type": "Enum",
+          "values": ["active", "inactive", "banned"],
+          "default": "active",
+          "nullable": false,
+          "description": "User account status"
+        }
+      ],
+      "relationships": [
+        {
+          "target_table": "posts",
+          "target_class": "Post",
+          "type": "one_to_many",
+          "back_populates": "author",
+          "description": "User's posts"
+        }
+      ]
+    },
+    {
+      "table_name": "posts",
+      "class_name": "Post",
+      "description": "Blog posts",
+      "options": {
+        "use_timestamps": true,
+        "use_soft_delete": true
+      },
+      "columns": [
+        {
+          "name": "id",
+          "type": "Integer",
+          "primary_key": true,
+          "autoincrement": true,
+          "description": "Primary key"
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "length": 200,
+          "nullable": false,
+          "description": "Post title"
+        },
+        {
+          "name": "content",
+          "type": "Text",
+          "nullable": true,
+          "description": "Post content"
+        },
+        {
+          "name": "author_id",
+          "type": "ForeignKey",
+          "target": "users.id",
+          "nullable": false,
+          "on_delete": "CASCADE",
+          "description": "Author foreign key"
+        },
+        {
+          "name": "status",
+          "type": "Enum",
+          "values": ["draft", "published", "archived"],
+          "default": "draft",
+          "nullable": false,
+          "description": "Post status"
+        }
+      ],
+      "relationships": [
+        {
+          "target_table": "users",
+          "target_class": "User",
+          "type": "many_to_one",
+          "back_populates": "posts",
+          "foreign_key": "author_id",
+          "description": "Post author"
+        }
+      ]
+    }
+  ]
+}
