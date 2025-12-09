@@ -212,14 +212,19 @@ try:
         print(f"   ⚠️  Template directory not found: {template_dir}")
         errors.append("Template directory missing")
     else:
-        template_files = list(template_dir.glob("*.j2"))
+        # Check for both .j2 and .jinja2 extensions
+        template_files = list(template_dir.glob("*.j2")) + list(template_dir.glob("*.jinja2"))
         print(f"   ✅ Template directory exists: {template_dir}")
         print(f"   ✅ Template files found: {len(template_files)}")
 
         for template in template_files[:5]:  # Show first 5
             print(f"      - {template.name}")
 
-    results.append(("Template System", True, f"{len(template_files)} templates found"))
+        if len(template_files) == 0:
+            print(f"   ⚠️  No template files found")
+            errors.append("No templates found")
+
+    results.append(("Template System", True if len(template_files) > 0 else False, f"{len(template_files)} templates found"))
 
 except Exception as e:
     print(f"   ❌ Template system test failed: {e}")
