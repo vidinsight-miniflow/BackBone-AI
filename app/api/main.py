@@ -17,6 +17,9 @@ from app.api.middleware import (
 from app.core.config import settings
 from app.core.health import health_checker
 from app.core.logger import get_logger
+from app.core.rate_limit import limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 logger = get_logger(__name__)
 
@@ -44,6 +47,22 @@ app = FastAPI(
     debug=settings.debug,
     lifespan=lifespan,
 )
+
+# Add rate limiting
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
+
+# Add custom exception handler for rate limiting
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request, exc):
+    return JSONResponse(
+        status_code=429,
+        content={
+            "error": "Rate limit exceeded",
+            "message": "You have exceeded the rate limit. Please try again later.",
+            "retry_after": exc.detail,
+        },
+    )
 
 # Add middleware (order matters - first added = outermost)
 app.add_middleware(ErrorTrackingMiddleware)
@@ -161,9 +180,10 @@ async def root():
     )
 
 
-# Include routers (will be added as we build them)
-# from app.api.routes import generate
-# app.include_router(generate.router, prefix="/api/v1", tags=["Generate"])
+# Include routers
+from app.api.routes import generate
+
+app.include_router(generate.router)
 
 
 if __name__ == "__main__":

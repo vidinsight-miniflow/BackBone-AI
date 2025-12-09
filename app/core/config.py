@@ -101,9 +101,20 @@ class Settings(BaseSettings):
     enable_metrics: bool = False
     metrics_port: int = 9090
 
-    # Security
+    # Security & Authentication
     api_key: str = Field(default="", description="API authentication key")
     enable_auth: bool = False
+
+    # JWT Settings
+    jwt_secret_key: str = Field(default="", description="JWT secret key")
+    jwt_algorithm: str = "HS256"
+    jwt_expiration_hours: int = 24
+
+    # Input Validation Limits
+    max_json_size: int = 10 * 1024 * 1024  # 10 MB
+    max_tables: int = 50
+    max_columns_per_table: int = 100
+    max_relationships_per_table: int = 50
 
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:8000"]
     cors_allow_credentials: bool = True
