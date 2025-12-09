@@ -121,7 +121,10 @@ uvicorn app.api.main:app --reload
 ### Core Functionality
 - ✅ **Multi-Agent System**: Specialized agents for validation, planning, generation, and testing
 - ✅ **LangChain Integration**: Powered by LangGraph for robust workflow orchestration
-- ✅ **Multiple LLM Support**: OpenAI, Anthropic Claude, Google Gemini
+- ✅ **3 LLM Providers**: Full support for **OpenAI GPT**, **Anthropic Claude**, **Google Gemini**
+  - Mix and match providers per agent
+  - Cost optimization (Gemini ~10x cheaper than GPT-4)
+  - 128K-2M token context windows
 - ✅ **Smart Validation**: Automatic ForeignKey and relationship validation
 - ✅ **Dependency Resolution**: Correct table creation order
 - ✅ **Mixin Support**: TimestampMixin, SoftDeleteMixin, and custom mixins
@@ -162,6 +165,7 @@ See [Production Readiness Report](docs/PRODUCTION_READINESS.md) for details.
 - [Architecture Guide](docs/ARCHITECTURE.md) - System design and workflows
 - [API Reference](docs/API.md) - REST API endpoints and usage
 - [Schema Guide](docs/SCHEMAS.md) - JSON schema format and examples
+- [LLM Provider Guide](docs/LLM_PROVIDERS.md) - **OpenAI, Claude, Gemini setup & optimization**
 - [Project Guide](GUIDE.md) - Development guide
 
 ### Production Documentation
