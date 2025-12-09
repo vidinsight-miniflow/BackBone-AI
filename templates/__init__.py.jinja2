@@ -1,0 +1,15 @@
+"""
+{{ project_name }} models.
+
+This module contains all database models for the {{ project_name }} project.
+"""
+
+{% for model in models %}
+from .{{ model.table_name }} import {{ model.class_name }}
+{% endfor %}
+
+__all__ = [
+{% for model in models %}
+    "{{ model.class_name }}",
+{% endfor %}
+]
