@@ -1,15 +1,21 @@
 """
 FastAPI application entry point.
-Provides REST API for code generation.
+Provides REST API for code generation with monitoring and health checks.
 """
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 
+from app.api.middleware import (
+    ErrorTrackingMiddleware,
+    MonitoringMiddleware,
+    RequestIDMiddleware,
+)
 from app.core.config import settings
+from app.core.health import health_checker
 from app.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -22,6 +28,7 @@ async def lifespan(app: FastAPI):
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
     logger.info(f"Environment: {settings.app_env}")
     logger.info(f"Debug mode: {settings.debug}")
+    logger.info(f"Metrics enabled: {settings.enable_metrics}")
 
     yield
 
@@ -38,6 +45,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Add middleware (order matters - first added = outermost)
+app.add_middleware(ErrorTrackingMiddleware)
+app.add_middleware(MonitoringMiddleware)
+app.add_middleware(RequestIDMiddleware)
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -48,10 +60,10 @@ app.add_middleware(
 )
 
 
-# Health check endpoint
-@app.get("/health", tags=["Health"])
+# Health check endpoints
+@app.get("/health", tags=["Health"], summary="Basic health check")
 async def health_check():
-    """Health check endpoint."""
+    """Basic health check endpoint - returns OK if service is up."""
     return JSONResponse(
         content={
             "status": "healthy",
@@ -60,6 +72,79 @@ async def health_check():
             "environment": settings.app_env,
         }
     )
+
+
+@app.get("/health/liveness", tags=["Health"], summary="Liveness probe")
+async def liveness_probe():
+    """
+    Liveness probe - checks if application is alive.
+
+    Used by Kubernetes/Docker to determine if container should be restarted.
+    Returns 200 if app is alive, 503 if not.
+    """
+    is_alive = await health_checker.check_liveness()
+
+    if is_alive:
+        return JSONResponse(
+            content={"status": "alive", "timestamp": health_checker.start_time}
+        )
+    else:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "dead"},
+        )
+
+
+@app.get("/health/readiness", tags=["Health"], summary="Readiness probe")
+async def readiness_probe():
+    """
+    Readiness probe - checks if application is ready to serve traffic.
+
+    Used by Kubernetes/load balancers to determine if traffic should be routed.
+    Returns 200 if ready, 503 if not ready.
+    """
+    health = await health_checker.check_readiness()
+
+    status_code = 200
+    if health.status == "unhealthy":
+        status_code = 503
+    elif health.status == "degraded":
+        status_code = 200  # Still serve traffic but log warnings
+
+    return JSONResponse(
+        status_code=status_code,
+        content=health.model_dump(),
+    )
+
+
+@app.get("/health/detailed", tags=["Health"], summary="Detailed health check")
+async def detailed_health_check():
+    """
+    Detailed health check - provides comprehensive system health information.
+
+    Includes:
+    - Component statuses (LLM, config, filesystem)
+    - Response times
+    - System metadata
+    """
+    health = await health_checker.check_all()
+    return JSONResponse(content=health.model_dump())
+
+
+# Metrics endpoint
+if settings.enable_metrics:
+
+    @app.get("/metrics", tags=["Monitoring"], summary="Prometheus metrics")
+    async def metrics():
+        """
+        Prometheus metrics endpoint.
+
+        Returns metrics in Prometheus text format for scraping.
+        """
+        from app.core.metrics import get_metrics
+
+        metrics_data, content_type = get_metrics()
+        return Response(content=metrics_data, media_type=content_type)
 
 
 # Root endpoint
