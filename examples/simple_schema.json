@@ -17,6 +17,7 @@
           "type": "Integer",
           "primary_key": true,
           "autoincrement": true,
+          "nullable": false,
           "description": "Primary key"
         },
         {
@@ -69,6 +70,7 @@
           "type": "Integer",
           "primary_key": true,
           "autoincrement": true,
+          "nullable": false,
           "description": "Primary key"
         },
         {

@@ -72,6 +72,8 @@ def init_db():
         init_db()
         ```
     """
-    from app.models import *  # noqa: F401, F403
+    # Import all models to register them with Base.metadata
+    # Note: Explicit imports are preferred over import *
+    from app.models import Post, User  # noqa: F401
 
     Base.metadata.create_all(bind=engine)

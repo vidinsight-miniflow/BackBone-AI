@@ -5,9 +5,8 @@
 {% for import_stmt in imports %}
 {{ import_stmt }}
 {% endfor %}
+
 {% endif %}
-
-
 class {{ model.class_name }}{{ model.inheritance_chain }}:
     """{{ model.description or model.class_name + ' model.' }}"""
 
@@ -17,13 +16,14 @@ class {{ model.class_name }}{{ model.inheritance_chain }}:
     # Columns
 {% for column in columns %}
     {{ column.name }} = Column(
-{%- if column.type == "ForeignKey" %}
+{%- if column.kwargs.get('foreign_key') %}
         Integer,
-        ForeignKey("{{ column.kwargs.foreign_key }}"{% if column.kwargs.on_delete %}, ondelete="{{ column.kwargs.on_delete }}"{% endif %}),
+        ForeignKey("{{ column.kwargs.foreign_key }}"{% if column.kwargs.get('on_delete') %}, ondelete="{{ column.kwargs.on_delete }}"{% endif %}),
 {%- elif column.type == "Enum" %}
         Enum(
-            {%- for val in column.args[:-1] %}
-"{{ val }}", {% endfor %}
+{%- for val in column.args[:-1] %}
+            "{{ val }}",
+{%- endfor %}
             name="{{ column.args[-1] }}"
         ),
 {%- elif column.type == "String" %}
@@ -35,14 +35,22 @@ class {{ model.class_name }}{{ model.inheritance_chain }}:
 {%- endif %}
 {%- for key, value in column.kwargs.items() %}
 {%- if key not in ['foreign_key', 'on_delete'] %}
-        {{ key }}={{ value|tojson }},
+{%- if value is boolean %}
+        {{ key }}={{ value|python_bool }},
+{%- elif value is string %}
+        {{ key }}="{{ value }}",
+{%- elif value is none %}
+        {{ key }}=None,
+{%- else %}
+        {{ key }}={{ value }},
+{%- endif %}
 {%- endif %}
 {%- endfor %}
     ){% if column.comment %}  # {{ column.comment }}{% endif %}
+
 {% endfor %}
 {% endif %}
 {% if relationships %}
-
     # Relationships
 {% for rel in relationships %}
     {{ rel.name }} = relationship(
@@ -50,17 +58,30 @@ class {{ model.class_name }}{{ model.inheritance_chain }}:
         back_populates="{{ rel.back_populates }}",
 {%- if rel.kwargs %}
 {%- for key, value in rel.kwargs.items() %}
-        {{ key }}={{ value|tojson }},
+{%- if value is boolean %}
+        {{ key }}={{ value|python_bool }},
+{%- elif value is string %}
+        {{ key }}="{{ value }}",
+{%- elif value is none %}
+        {{ key }}=None,
+{%- else %}
+        {{ key }}={{ value }},
+{%- endif %}
 {%- endfor %}
 {%- endif %}
     )
+
 {% endfor %}
 {% endif %}
-
     def __repr__(self) -> str:
         """String representation of {{ model.class_name }}."""
-{%- if columns %}
-{%- set pk_columns = columns|selectattr('kwargs.primary_key', 'equalto', true)|list %}
+{% if columns %}
+{%- set pk_columns = [] %}
+{%- for col in columns %}
+{%- if col.kwargs.get('primary_key') %}
+{%- set _ = pk_columns.append(col) %}
+{%- endif %}
+{%- endfor %}
 {%- if pk_columns %}
         return f"<{{ model.class_name }}({% for pk in pk_columns %}{{ pk.name }}={self.{{ pk.name }}}{% if not loop.last %}, {% endif %}{% endfor %})>"
 {%- else %}
@@ -69,3 +90,4 @@ class {{ model.class_name }}{{ model.inheritance_chain }}:
 {%- else %}
         return f"<{{ model.class_name }}()>"
 {%- endif %}
+

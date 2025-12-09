@@ -362,11 +362,21 @@ class ArchitectAgent(BaseAgent):
 
         for rel in relationships:
             # Determine relationship attribute name
-            # For many-to-one: Use singular form from back_populates
+            # For many-to-one: Use the name that matches the foreign_key column
+            #   (e.g., author_id -> author)
             # For one-to-many: Use plural form from target_table
             if rel.type == RelationshipType.MANY_TO_ONE:
-                name = rel.back_populates
+                # For many-to-one, derive name from foreign_key if available
+                # foreign_key format: "column_name" (e.g., "author_id")
+                if rel.foreign_key:
+                    # Remove "_id" suffix if present to get relationship name
+                    fk_name = rel.foreign_key.replace("_id", "")
+                    name = fk_name
+                else:
+                    # Fallback: use back_populates (but this is usually wrong)
+                    name = rel.back_populates
             else:
+                # For one-to-many, use target_table name (plural)
                 name = rel.target_table
 
             spec = RelationshipSpec(

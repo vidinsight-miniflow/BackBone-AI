@@ -141,16 +141,38 @@ class GenerationWorkflow:
             result = await self.schema_validator.execute({"schema": schema_json})
 
             # Update state
-            validation_passed = result.get("status") == "passed"
+            # The result from schema_validator has "validation_status" field (enum value "PASS" or "FAIL")
+            validation_status = result.get("validation_status", "")
+            # Handle both enum values and string values
+            if isinstance(validation_status, str):
+                validation_passed = validation_status.upper() == "PASS"
+            elif hasattr(validation_status, "value"):
+                # Enum object - get the value
+                validation_passed = validation_status.value.upper() == "PASS"
+            else:
+                # Fallback: check if there are no errors
+                validation_passed = len(result.get("errors", [])) == 0
 
+            # Get parsed schema from tool outputs
+            # The parsed schema is stored in tool_outputs -> json_validation -> parsed_schema
+            tool_outputs = result.get("tool_outputs", {})
+            json_validation = tool_outputs.get("json_validation", {})
+            # The schema parser tool returns the parsed schema directly
+            parsed_schema = json_validation.get("parsed_schema")
+            
+            # If not found, try to get from the raw input (we already have it)
+            if parsed_schema is None:
+                # Fallback: use the original raw_input as parsed schema
+                parsed_schema = state.get("raw_input")
+            
             return {
                 "validation_report": result,
                 "validation_passed": validation_passed,
                 "validation_errors": result.get("errors", []),
-                "parsed_schema": result.get("validated_schema"),
+                "parsed_schema": parsed_schema,
                 "current_stage": "validation",
-                "errors": [] if validation_passed else [e["message"] for e in result.get("errors", [])],
-                "warnings": [w["message"] for w in result.get("warnings", [])],
+                "errors": [] if validation_passed else [e.get("message", str(e)) for e in result.get("errors", [])],
+                "warnings": [w.get("message", str(w)) for w in result.get("warnings", [])],
             }
 
         except Exception as e:
@@ -158,8 +180,11 @@ class GenerationWorkflow:
             return {
                 "validation_passed": False,
                 "validation_errors": [str(e)],
+                "validation_report": None,
+                "parsed_schema": None,
                 "current_stage": "validation",
                 "errors": [str(e)],
+                "warnings": [],
             }
 
     def _should_continue_after_validation(self, state: WorkflowState) -> str:
@@ -172,7 +197,10 @@ class GenerationWorkflow:
         Returns:
             "continue" if validation passed, "end" otherwise
         """
-        if state.get("validation_passed", False):
+        validation_passed = state.get("validation_passed", False)
+        has_parsed_schema = state.get("parsed_schema") is not None
+        
+        if validation_passed and has_parsed_schema:
             logger.info("✅ Validation passed, continuing to architecture planning")
             return "continue"
         else:
@@ -195,8 +223,17 @@ class GenerationWorkflow:
 
         try:
             # Extract validation results
-            validation_report = state["validation_report"]
-            parsed_schema = state["parsed_schema"]
+            validation_report = state.get("validation_report", {})
+            parsed_schema = state.get("parsed_schema")
+            
+            # If parsed_schema is None, try to get it from tool outputs
+            if parsed_schema is None:
+                tool_outputs = validation_report.get("tool_outputs", {})
+                json_validation = tool_outputs.get("json_validation", {})
+                parsed_schema = json_validation.get("parsed_schema")
+            
+            if parsed_schema is None:
+                raise ValueError("Parsed schema not available in validation results")
 
             # Get build order from validation report
             build_order = validation_report.get("dependency_analysis", {}).get("build_order", [])
@@ -216,7 +253,7 @@ class GenerationWorkflow:
 
         except Exception as e:
             logger.error(f"Architecture planning failed: {e}", exc_info=True)
-            errors = state.get("errors", [])
+            errors = list(state.get("errors", []))  # Create a copy to avoid mutation
             errors.append(f"Architecture planning error: {str(e)}")
             return {
                 "errors": errors,
@@ -251,7 +288,7 @@ class GenerationWorkflow:
 
         except Exception as e:
             logger.error(f"Code generation failed: {e}", exc_info=True)
-            errors = state.get("errors", [])
+            errors = list(state.get("errors", []))  # Create a copy to avoid mutation
             errors.append(f"Code generation error: {str(e)}")
             return {
                 "errors": errors,
@@ -281,16 +318,26 @@ class GenerationWorkflow:
             # Check if validation passed
             validation_passed = result.get("overall_passed", False)
 
+            # Always record validation results in state
             if not validation_passed:
                 logger.warning("Code quality validation failed")
                 if self.strict_validation:
                     logger.error("Strict mode enabled, marking workflow as failed")
-                    errors = state.get("errors", [])
+                    errors = list(state.get("errors", []))  # Create a copy to avoid mutation
                     errors.append("Code quality validation failed")
                     return {
                         "errors": errors,
                         "code_validation_report": result,
                         "current_stage": "validation_failed",
+                    }
+                else:
+                    # In non-strict mode, record warnings but don't fail
+                    warnings = list(state.get("warnings", []))
+                    warnings.append("Code quality validation failed (non-strict mode)")
+                    return {
+                        "code_validation_report": result,
+                        "warnings": warnings,
+                        "current_stage": "complete",
                     }
             else:
                 logger.info("✅ Code quality validation passed")
@@ -302,10 +349,11 @@ class GenerationWorkflow:
 
         except Exception as e:
             logger.error(f"Code validation failed: {e}", exc_info=True)
-            errors = state.get("errors", [])
+            errors = list(state.get("errors", []))  # Create a copy to avoid mutation
             errors.append(f"Code validation error: {str(e)}")
             return {
                 "errors": errors,
+                "code_validation_report": None,
                 "current_stage": "validation",
             }
 
@@ -322,10 +370,22 @@ class GenerationWorkflow:
         logger.info("🚀 Starting code generation workflow")
 
         # Parse input
-        if isinstance(json_schema, str):
-            raw_input = json.loads(json_schema)
-        else:
-            raw_input = json_schema
+        try:
+            if isinstance(json_schema, str):
+                raw_input = json.loads(json_schema)
+            else:
+                raw_input = json_schema
+        except json.JSONDecodeError as e:
+            error_msg = f"Invalid JSON schema: {str(e)}"
+            logger.error(error_msg)
+            raise ValueError(error_msg) from e
+
+        # Validate input structure
+        if not isinstance(raw_input, dict):
+            raise ValueError("Schema must be a dictionary or valid JSON string")
+
+        if "schema" not in raw_input:
+            raise ValueError("Schema must contain 'schema' key with table definitions")
 
         # Extract metadata
         project_name = raw_input.get("project_name", "UnnamedProject")
