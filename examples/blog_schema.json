@@ -1,0 +1,157 @@
+{
+  "project_name": "BlogBackend",
+  "db_type": "postgresql",
+  "description": "Blog backend with Users, Posts, and Comments",
+  "schema": [
+    {
+      "table_name": "users",
+      "class_name": "User",
+      "options": {
+        "use_timestamps": true,
+        "use_soft_delete": false
+      },
+      "columns": [
+        {
+          "name": "id",
+          "type": "Integer",
+          "primary_key": true
+        },
+        {
+          "name": "username",
+          "type": "String",
+          "length": 50,
+          "unique": true,
+          "nullable": false
+        },
+        {
+          "name": "email",
+          "type": "String",
+          "length": 100,
+          "unique": true,
+          "nullable": false
+        },
+        {
+          "name": "bio",
+          "type": "Text",
+          "nullable": true
+        }
+      ],
+      "relationships": [
+        {
+          "target_table": "posts",
+          "target_class": "Post",
+          "type": "one_to_many",
+          "back_populates": "author"
+        },
+        {
+          "target_table": "comments",
+          "target_class": "Comment",
+          "type": "one_to_many",
+          "back_populates": "author"
+        }
+      ]
+    },
+    {
+      "table_name": "posts",
+      "class_name": "Post",
+      "options": {
+        "use_timestamps": true,
+        "use_soft_delete": true
+      },
+      "columns": [
+        {
+          "name": "id",
+          "type": "Integer",
+          "primary_key": true
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "length": 200,
+          "nullable": false
+        },
+        {
+          "name": "content",
+          "type": "Text",
+          "nullable": false
+        },
+        {
+          "name": "slug",
+          "type": "String",
+          "length": 200,
+          "unique": true,
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "Enum",
+          "values": ["draft", "published", "archived"],
+          "default": "draft"
+        },
+        {
+          "name": "author_id",
+          "type": "ForeignKey",
+          "target": "users.id"
+        }
+      ],
+      "relationships": [
+        {
+          "target_table": "users",
+          "target_class": "User",
+          "type": "many_to_one",
+          "back_populates": "posts"
+        },
+        {
+          "target_table": "comments",
+          "target_class": "Comment",
+          "type": "one_to_many",
+          "back_populates": "post"
+        }
+      ]
+    },
+    {
+      "table_name": "comments",
+      "class_name": "Comment",
+      "options": {
+        "use_timestamps": true,
+        "use_soft_delete": true
+      },
+      "columns": [
+        {
+          "name": "id",
+          "type": "Integer",
+          "primary_key": true
+        },
+        {
+          "name": "content",
+          "type": "Text",
+          "nullable": false
+        },
+        {
+          "name": "author_id",
+          "type": "ForeignKey",
+          "target": "users.id"
+        },
+        {
+          "name": "post_id",
+          "type": "ForeignKey",
+          "target": "posts.id"
+        }
+      ],
+      "relationships": [
+        {
+          "target_table": "users",
+          "target_class": "User",
+          "type": "many_to_one",
+          "back_populates": "comments"
+        },
+        {
+          "target_table": "posts",
+          "target_class": "Post",
+          "type": "many_to_one",
+          "back_populates": "comments"
+        }
+      ]
+    }
+  ]
+}
