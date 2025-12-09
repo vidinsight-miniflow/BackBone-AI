@@ -1,11 +1,11 @@
-# Core LangChain & AI
-langchain==0.3.0
-langchain-openai==0.2.0
-langchain-anthropic==0.2.0
-langchain-google-genai==0.2.0
-langchain-community==0.3.0
-langgraph==0.2.30
-langsmith==0.2.0
+# Core LangChain & AI (Updated for security)
+langchain==0.3.27  # Updated from 0.3.0
+langchain-openai==0.2.9  # Updated from 0.2.0
+langchain-anthropic==0.3.7  # Updated from 0.2.0
+langchain-google-genai==0.2.2  # Updated from 0.2.0
+langchain-community==0.3.12  # Updated from 0.3.0
+langgraph==0.2.59  # Updated from 0.2.30
+langsmith==0.2.8  # Updated from 0.2.0
 
 # Database & ORM
 sqlalchemy==2.0.31
@@ -14,11 +14,11 @@ asyncpg==0.29.0  # PostgreSQL async driver
 psycopg2-binary==2.9.9  # PostgreSQL sync driver
 
 # API Framework
-fastapi==0.115.0
-uvicorn[standard]==0.30.0
-pydantic==2.8.0
-pydantic-settings==2.4.0
-python-multipart==0.0.9
+fastapi==0.115.6  # Updated from 0.115.0
+uvicorn[standard]==0.34.0  # Updated from 0.30.0
+pydantic==2.10.5  # Updated from 2.8.0
+pydantic-settings==2.7.1  # Updated from 2.4.0
+python-multipart==0.0.20  # Updated from 0.0.9
 
 # Code Quality & Formatting
 black==24.8.0
@@ -27,7 +27,7 @@ mypy==1.11.0
 isort==5.13.2
 
 # Templates & Parsing
-jinja2==3.1.4
+jinja2==3.1.5  # Updated from 3.1.4
 pyyaml==6.0.2
 
 # Testing
@@ -42,6 +42,11 @@ python-dotenv==1.0.1
 tenacity==9.0.0  # Retry logic
 rich==13.8.0  # Beautiful console output
 typer==0.12.0  # CLI interface
+
+# Security & Authentication
+python-jose[cryptography]==3.3.0  # JWT authentication
+passlib[bcrypt]==1.7.4  # Password hashing
+slowapi==0.1.9  # Rate limiting
 
 # Monitoring & Logging
 loguru==0.7.2
