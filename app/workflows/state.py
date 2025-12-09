@@ -32,8 +32,11 @@ class WorkflowState(TypedDict, total=False):
     generated_files: Dict[str, str]  # {file_path: content}
     generation_summary: Optional[Dict[str, Any]]
 
+    # Stage 4: Code Quality Validation (optional)
+    code_validation_report: Optional[Dict[str, Any]]
+
     # Metadata
-    current_stage: str  # "validation", "planning", "generation", "complete"
+    current_stage: str  # "validation", "planning", "generation", "code_validation", "complete"
     errors: List[str]
     warnings: List[str]
     metadata: Dict[str, Any]

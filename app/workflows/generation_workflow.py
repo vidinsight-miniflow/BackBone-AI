@@ -15,6 +15,7 @@ from langgraph.graph import END, START, StateGraph
 from app.agents.architect_agent import ArchitectAgent
 from app.agents.code_generator_agent import CodeGeneratorAgent
 from app.agents.schema_validator_agent import SchemaValidatorAgent
+from app.agents.validator_agent import ValidatorAgent
 from app.core.llm_factory import LLMFactory
 from app.core.logger import get_logger
 from app.workflows.state import WorkflowState
@@ -26,19 +27,28 @@ class GenerationWorkflow:
     """
     LangGraph workflow for code generation.
 
-    This workflow chains together validation, planning, and generation
-    agents to transform a JSON schema into production-ready code.
+    This workflow chains together validation, planning, generation,
+    and quality validation agents to produce production-ready code.
     """
 
-    def __init__(self, llm_provider: str = "openai"):
+    def __init__(
+        self,
+        llm_provider: str = "openai",
+        enable_code_validation: bool = True,
+        strict_validation: bool = False,
+    ):
         """
         Initialize the generation workflow.
 
         Args:
             llm_provider: LLM provider name (openai, anthropic, google)
+            enable_code_validation: Enable code quality validation stage
+            strict_validation: Treat warnings as errors in validation
         """
         self.llm_provider = llm_provider
         self.llm = LLMFactory.create_llm(provider=llm_provider)
+        self.enable_code_validation = enable_code_validation
+        self.strict_validation = strict_validation
 
         # Initialize agents
         logger.info("Initializing agents for workflow")
@@ -46,9 +56,21 @@ class GenerationWorkflow:
         self.architect = ArchitectAgent(llm=self.llm)
         self.code_generator = CodeGeneratorAgent(format_code=True)
 
+        if enable_code_validation:
+            self.code_validator = ValidatorAgent(
+                enable_type_checking=True,
+                enable_linting=True,
+                enable_security_scan=True,
+                strict_mode=strict_validation,
+            )
+        else:
+            self.code_validator = None
+
         # Build workflow graph
         self.workflow = self._build_workflow()
-        logger.info("Generation workflow initialized")
+        logger.info(
+            f"Generation workflow initialized (code_validation={enable_code_validation})"
+        )
 
     def _build_workflow(self) -> StateGraph:
         """
@@ -65,6 +87,9 @@ class GenerationWorkflow:
         workflow.add_node("plan_architecture", self._plan_architecture_node)
         workflow.add_node("generate_code", self._generate_code_node)
 
+        if self.enable_code_validation:
+            workflow.add_node("validate_code", self._validate_code_node)
+
         # Define edges (workflow flow)
         workflow.add_edge(START, "validate_schema")
 
@@ -79,7 +104,13 @@ class GenerationWorkflow:
         )
 
         workflow.add_edge("plan_architecture", "generate_code")
-        workflow.add_edge("generate_code", END)
+
+        # Add code validation stage if enabled
+        if self.enable_code_validation:
+            workflow.add_edge("generate_code", "validate_code")
+            workflow.add_edge("validate_code", END)
+        else:
+            workflow.add_edge("generate_code", END)
 
         # Compile workflow
         return workflow.compile()
@@ -225,6 +256,57 @@ class GenerationWorkflow:
             return {
                 "errors": errors,
                 "current_stage": "generation",
+            }
+
+    async def _validate_code_node(self, state: WorkflowState) -> Dict[str, Any]:
+        """
+        Node 4: Validate generated code quality.
+
+        Args:
+            state: Current workflow state
+
+        Returns:
+            Updated state with validation results
+        """
+        logger.info("=" * 60)
+        logger.info("STAGE 4: Code Quality Validation")
+        logger.info("=" * 60)
+
+        try:
+            # Execute code validation
+            result = await self.code_validator.execute({
+                "generated_files": state["generated_files"]
+            })
+
+            # Check if validation passed
+            validation_passed = result.get("overall_passed", False)
+
+            if not validation_passed:
+                logger.warning("Code quality validation failed")
+                if self.strict_validation:
+                    logger.error("Strict mode enabled, marking workflow as failed")
+                    errors = state.get("errors", [])
+                    errors.append("Code quality validation failed")
+                    return {
+                        "errors": errors,
+                        "code_validation_report": result,
+                        "current_stage": "validation_failed",
+                    }
+            else:
+                logger.info("✅ Code quality validation passed")
+
+            return {
+                "code_validation_report": result,
+                "current_stage": "complete",
+            }
+
+        except Exception as e:
+            logger.error(f"Code validation failed: {e}", exc_info=True)
+            errors = state.get("errors", [])
+            errors.append(f"Code validation error: {str(e)}")
+            return {
+                "errors": errors,
+                "current_stage": "validation",
             }
 
     async def run(self, json_schema: Dict[str, Any] | str) -> WorkflowState:
