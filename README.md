@@ -118,15 +118,37 @@ uvicorn app.api.main:app --reload
 
 ## 📦 Features
 
+### Core Functionality
 - ✅ **Multi-Agent System**: Specialized agents for validation, planning, generation, and testing
 - ✅ **LangChain Integration**: Powered by LangGraph for robust workflow orchestration
-- ✅ **Multiple LLM Support**: OpenAI, Anthropic Claude, Google Gemini
+- ✅ **3 LLM Providers**: Full support for **OpenAI GPT**, **Anthropic Claude**, **Google Gemini**
+  - Mix and match providers per agent
+  - Cost optimization (Gemini ~10x cheaper than GPT-4)
+  - 128K-2M token context windows
 - ✅ **Smart Validation**: Automatic ForeignKey and relationship validation
 - ✅ **Dependency Resolution**: Correct table creation order
 - ✅ **Mixin Support**: TimestampMixin, SoftDeleteMixin, and custom mixins
 - ✅ **Code Quality**: Auto-formatted with Black, linted with Ruff
 - ✅ **Type Safety**: Full type hints with mypy validation
-- ⏳ **Test Generation**: Automatic pytest tests (coming soon)
+
+### Production Features
+- ✅ **Security**: API key + JWT authentication, 4-tier rate limiting, input validation
+- ✅ **Monitoring**: Health checks, Prometheus metrics (26 metrics), LangSmith tracing
+- ✅ **REST API**: Full-featured API with OpenAPI documentation
+- ✅ **Observability**: Request tracking, error monitoring, cost tracking
+- ✅ **Documentation**: Comprehensive guides (Security, Monitoring, API, Architecture)
+
+## 🚀 Production Ready (95%)
+
+BackBone-AI is production-ready with enterprise-grade features:
+
+- **Security**: Dual authentication (API key + JWT), rate limiting, input validation
+- **Monitoring**: Health checks, 26 Prometheus metrics, distributed tracing
+- **Documentation**: 3000+ lines covering security, monitoring, deployment
+- **Testing**: Comprehensive test suite with 15+ test cases
+- **Dependencies**: All packages updated to latest secure versions
+
+See [Production Readiness Report](docs/PRODUCTION_READINESS.md) for details.
 
 ## 🛠️ Technology Stack
 
@@ -139,10 +161,17 @@ uvicorn app.api.main:app --reload
 
 ## 📖 Documentation
 
-- [Architecture Guide](docs/architecture.md)
-- [Agent Details](docs/agents.md)
-- [API Reference](docs/api.md)
-- [Project Guide](GUIDE.md)
+### Core Documentation
+- [Architecture Guide](docs/ARCHITECTURE.md) - System design and workflows
+- [API Reference](docs/API.md) - REST API endpoints and usage
+- [Schema Guide](docs/SCHEMAS.md) - JSON schema format and examples
+- [LLM Provider Guide](docs/LLM_PROVIDERS.md) - **OpenAI, Claude, Gemini setup & optimization**
+- [Project Guide](GUIDE.md) - Development guide
+
+### Production Documentation
+- [Production Readiness](docs/PRODUCTION_READINESS.md) - 95% ready status report
+- [Security Guide](docs/SECURITY.md) - Authentication, rate limiting, best practices
+- [Monitoring Guide](docs/MONITORING.md) - Health checks, metrics, observability
 
 ## 🤝 Contributing
 

@@ -1,0 +1,8 @@
+# Security & Authentication
+python-jose[cryptography]==3.3.0  # JWT tokens
+passlib[bcrypt]==1.7.4  # Password hashing
+slowapi==0.1.9  # Rate limiting
+python-multipart==0.0.9  # Form data parsing
+
+# Updated versions for security patches
+# Note: Update main requirements.txt after testing

@@ -3,6 +3,7 @@ CLI interface for BackBone-AI.
 Provides command-line tools for code generation.
 """
 
+import asyncio
 import json
 from pathlib import Path
 
@@ -10,9 +11,12 @@ import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.syntax import Syntax
+from rich.table import Table
 
 from app.core.config import settings
 from app.core.logger import get_logger
+from app.workflows.generation_workflow import GenerationWorkflow
 
 app = typer.Typer(
     name="backbone-ai",
@@ -92,7 +96,7 @@ def generate(
         # Create output directory
         output.mkdir(parents=True, exist_ok=True)
 
-        # Generate code (placeholder for now)
+        # Generate code using workflow
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -100,16 +104,43 @@ def generate(
         ) as progress:
             task = progress.add_task("🤖 Generating code...", total=None)
 
-            # TODO: Implement actual generation logic
-            # This will call the orchestrator agent
-            console.print(
-                "\n[yellow]⚠️  Generation logic not yet implemented[/yellow]"
-            )
-            console.print("This is a placeholder. Actual agents will be called here.\n")
+            # Run workflow
+            workflow = GenerationWorkflow(llm_provider=settings.default_llm_provider)
+            final_state = asyncio.run(workflow.run(schema_data))
 
             progress.update(task, completed=True)
 
-        console.print("[bold green]✅ Generation completed![/bold green]\n")
+        # Check for errors
+        if final_state.get("errors"):
+            console.print("\n[bold red]❌ Generation failed with errors:[/bold red]")
+            for error in final_state["errors"]:
+                console.print(f"  • {error}")
+            raise typer.Exit(code=1)
+
+        # Write generated files to disk
+        generated_files = final_state.get("generated_files", {})
+        if not generated_files:
+            console.print("[yellow]⚠️  No files were generated[/yellow]")
+            raise typer.Exit(code=1)
+
+        console.print(f"\n[bold green]✅ Successfully generated {len(generated_files)} files![/bold green]\n")
+
+        # Write files
+        for file_path, content in generated_files.items():
+            full_path = output / file_path
+            full_path.parent.mkdir(parents=True, exist_ok=True)
+            full_path.write_text(content)
+            console.print(f"  ✓ {file_path}")
+
+        # Show summary
+        summary = final_state.get("generation_summary", {})
+        if summary:
+            console.print(f"\n[bold cyan]Summary:[/bold cyan]")
+            console.print(f"  • Models: {summary.get('total_models', 0)}")
+            console.print(f"  • Columns: {summary.get('total_columns', 0)}")
+            console.print(f"  • Relationships: {summary.get('total_relationships', 0)}")
+
+        console.print(f"\n[bold green]📁 Output directory: {output}[/bold green]\n")
 
     except json.JSONDecodeError as e:
         console.print(f"[bold red]Error:[/bold red] Invalid JSON schema: {e}")
@@ -148,13 +179,65 @@ def validate(
         with open(schema, "r") as f:
             schema_data = json.load(f)
 
-        console.print(f"✅ JSON syntax is valid")
+        console.print(f"✅ JSON syntax is valid\n")
 
-        # TODO: Implement validation logic using Schema Validator Agent
-        console.print(
-            "\n[yellow]⚠️  Full validation not yet implemented[/yellow]"
-        )
-        console.print("Schema Validator Agent will be called here.\n")
+        # Run validation using workflow
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task("🔍 Validating schema...", total=None)
+
+            workflow = GenerationWorkflow(llm_provider=settings.default_llm_provider)
+            result = asyncio.run(workflow.validate_only(schema_data))
+
+            progress.update(task, completed=True)
+
+        # Display results
+        status = result.get("status", "unknown")
+        if status == "passed":
+            console.print("\n[bold green]✅ Validation passed![/bold green]\n")
+        elif status == "passed_with_warnings":
+            console.print("\n[bold yellow]⚠️  Validation passed with warnings[/bold yellow]\n")
+        else:
+            console.print("\n[bold red]❌ Validation failed[/bold red]\n")
+
+        # Show errors
+        errors = result.get("errors", [])
+        if errors:
+            console.print("[bold red]Errors:[/bold red]")
+            for error in errors:
+                console.print(f"  • {error.get('message', error)}")
+            console.print()
+
+        # Show warnings
+        warnings = result.get("warnings", [])
+        if warnings:
+            console.print("[bold yellow]Warnings:[/bold yellow]")
+            for warning in warnings:
+                console.print(f"  • {warning.get('message', warning)}")
+            console.print()
+
+        # Show info
+        info_items = result.get("info", [])
+        if info_items:
+            console.print("[bold cyan]Info:[/bold cyan]")
+            for info in info_items:
+                console.print(f"  • {info.get('message', info)}")
+            console.print()
+
+        # Show build order
+        dependency_analysis = result.get("dependency_analysis", {})
+        if dependency_analysis.get("build_order"):
+            console.print("[bold cyan]Build Order:[/bold cyan]")
+            for i, table in enumerate(dependency_analysis["build_order"], 1):
+                console.print(f"  {i}. {table}")
+            console.print()
+
+        # Exit with appropriate code
+        if status == "failed":
+            raise typer.Exit(code=1)
 
     except json.JSONDecodeError as e:
         console.print(f"[bold red]Error:[/bold red] Invalid JSON: {e}")
