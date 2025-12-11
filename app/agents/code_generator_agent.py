@@ -174,7 +174,8 @@ class CodeGeneratorAgent(BaseAgent):
         Returns:
             str: Generated Python code
         """
-        template = self.jinja_env.get_template("model.py.jinja2")
+        # Use improved template with modern SQLAlchemy 2.0 syntax
+        template = self.jinja_env.get_template("model_improved.py.jinja2")
 
         # Prepare imports as strings
         imports = [imp.to_string() for imp in model.imports]
@@ -209,18 +210,19 @@ class CodeGeneratorAgent(BaseAgent):
 
     def _generate_mixins_file(self) -> str:
         """
-        Generate mixins.py file.
+        Generate mixins.py file with improved mixins.
 
         Returns:
             str: Generated Python code
         """
-        template = self.jinja_env.get_template("mixins.py.jinja2")
+        # Use improved mixins template with better functionality
+        template = self.jinja_env.get_template("mixins_improved.py.jinja2")
         content = template.render()
         return content
 
     def _generate_database_file(self, plan: ArchitecturePlan) -> str:
         """
-        Generate database.py file.
+        Generate database.py file with async support.
 
         Args:
             plan: ArchitecturePlan
@@ -228,20 +230,34 @@ class CodeGeneratorAgent(BaseAgent):
         Returns:
             str: Generated Python code
         """
-        template = self.jinja_env.get_template("database.py.jinja2")
+        # Use improved database template with async support
+        template = self.jinja_env.get_template("database_improved.py.jinja2")
 
-        # Determine database URL based on db_type
+        # Determine database URLs (both sync and async)
         db_url_templates = {
             "postgresql": "postgresql://user:password@localhost/dbname",
             "mysql": "mysql://user:password@localhost/dbname",
             "sqlite": "sqlite:///./database.db",
         }
 
+        async_db_url_templates = {
+            "postgresql": "postgresql+asyncpg://user:password@localhost/dbname",
+            "mysql": "mysql+aiomysql://user:password@localhost/dbname",
+            "sqlite": "sqlite+aiosqlite:///./database.db",
+        }
+
         db_url = db_url_templates.get(
             plan.db_type, "postgresql://user:password@localhost/dbname"
         )
 
-        content = template.render(db_url=db_url)
+        async_db_url = async_db_url_templates.get(
+            plan.db_type, "postgresql+asyncpg://user:password@localhost/dbname"
+        )
+
+        content = template.render(
+            database_url=db_url,
+            async_database_url=async_db_url
+        )
         return content
 
     def _has_mixins(self, plan: ArchitecturePlan) -> bool:
