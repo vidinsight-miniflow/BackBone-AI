@@ -1,174 +1,142 @@
-# 🚀 Quick Start Guide
+# 🚀 Hızlı Başlangıç (5 Dakika)
 
-Get BackBone-AI running in 5 minutes.
+BackBone-AI'yi 3 adımda kurun ve kullanın.
 
 ---
 
-## 1. Install Dependencies
+## Otomatik Kurulum (Önerilen)
 
+### Linux / Mac:
 ```bash
-pip install -r requirements.txt
+./install.sh
 ```
 
-**Note:** Version pins removed for maximum compatibility. If you encounter conflicts, create a virtual environment:
+### Windows:
+```cmd
+install.bat
+```
+
+Kurulum scripti:
+- ✅ Virtual environment oluşturur
+- ✅ Tüm bağımlılıkları yükler
+- ✅ .env dosyasını oluşturur
+
+---
+
+## Manuel Kurulum
+
+### 1. Bağımlılıkları Yükle
 
 ```bash
+# Virtual environment oluştur
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# Bağımlılıkları yükle
 pip install -r requirements.txt
 ```
 
----
-
-## 2. Configure API Keys
+### 2. API Anahtarını Ekle
 
 ```bash
-# Copy example environment file
+# .env dosyasını oluştur
 cp .env.example .env
 
-# Edit and add your API key
-nano .env
+# Düzenle ve API anahtarını ekle
+nano .env  # veya: notepad .env (Windows)
 ```
 
-**Minimum configuration:**
+**Minimum konfigürasyon:**
 ```bash
-# Choose ONE provider
+# Bir provider seç
 DEFAULT_LLM_PROVIDER=openai
 
-# Add its API key
+# API anahtarını ekle
 OPENAI_API_KEY=sk-your-key-here
 ```
 
-**Provider options:**
-- `openai` - Fast, high quality (requires OPENAI_API_KEY)
-- `anthropic` - Best for complex schemas (requires ANTHROPIC_API_KEY)
-- `google` - Most cost-effective (requires GOOGLE_API_KEY)
+**Provider seçenekleri:**
+- `openai` - Hızlı ve kaliteli ($$$)
+- `google` - En ucuz ($ - 10x daha ucuz!)
+- `anthropic` - Karmaşık şemalar için ($$$$)
 
----
-
-## 3. Generate Your First Project
+### 3. İlk Projeyi Oluştur
 
 ```bash
-# Use the simple blog example
+# Basit blog örneği
 backbone-ai generate \
   --schema examples/simple_schema.json \
   --output ./my_blog
-
-# Or use the CLI without flags
-backbone-ai generate
-# Then follow the prompts
 ```
 
 ---
 
-## 4. Check Generated Code
-
-```bash
-cd my_blog
-tree .
-
-# You should see:
-# ├── models/
-# │   ├── __init__.py
-# │   ├── database.py
-# │   ├── mixins.py
-# │   ├── user.py
-# │   └── post.py
-# └── README.md
-```
-
----
-
-## 5. Use the Generated Models
+## Oluşturulan Kodu Kullan
 
 ```python
 from models.database import create_tables, SessionLocal
 from models.user import User
 from models.post import Post
 
-# Create tables
+# Tabloları oluştur
 create_tables()
 
-# Create a session
+# Session aç
 db = SessionLocal()
 
-# Create a user
+# Kullanıcı oluştur
 user = User(
-    username="john_doe",
-    email="john@example.com",
+    username="ahmet",
+    email="ahmet@example.com",
     status="active"
 )
 db.add(user)
 db.commit()
 
-# Create a post
+# Post oluştur
 post = Post(
-    title="My First Post",
-    content="Hello, World!",
+    title="İlk Yazım",
+    content="Merhaba Dünya!",
     author_id=user.id,
     status="published"
 )
 db.add(post)
 db.commit()
 
-# Query
+# Sorgula
 all_users = db.query(User).all()
-print(f"Found {len(all_users)} users")
+print(f"{len(all_users)} kullanıcı bulundu")
 
 db.close()
 ```
 
 ---
 
-## Common Issues
+## Örnekler
 
-### ImportError: No module named 'X'
-
-**Fix:** Install dependencies
 ```bash
-pip install -r requirements.txt
-```
+# Basit (2 tablo)
+backbone-ai generate --schema examples/simple_schema.json
 
-### No API key configured
+# Orta (5 tablo)
+backbone-ai generate --schema examples/blog_schema.json
 
-**Fix:** Add API key to .env
-```bash
-echo "OPENAI_API_KEY=sk-your-key" >> .env
-```
-
-### Rate limit exceeded
-
-**Fix:** Use a different provider or wait
-```bash
-# Switch to Google (cheaper, higher limits)
-DEFAULT_LLM_PROVIDER=google
-GOOGLE_API_KEY=your-google-key
+# Karmaşık (10+ tablo)
+backbone-ai generate --schema examples/ecommerce_schema.json
 ```
 
 ---
 
-## Next Steps
-
-- 📖 Read [LLM_PROVIDERS.md](docs/LLM_PROVIDERS.md) for provider comparison
-- 🔒 Read [SECURITY.md](docs/SECURITY.md) for production deployment
-- 📊 Read [MONITORING.md](docs/MONITORING.md) for observability
-- 🏗️ Read [ARCHITECTURE.md](docs/ARCHITECTURE.md) for system design
-
----
-
-## API Mode
-
-Start the REST API:
+## API Modu
 
 ```bash
+# API'yi başlat
 uvicorn app.api.main:app --reload
-```
 
-Then visit: http://localhost:8000/docs
+# Tarayıcıda aç
+http://localhost:8000/docs
 
-Generate code via API:
-
-```bash
+# Kod oluştur
 curl -X POST http://localhost:8000/api/v1/generate \
   -H "Content-Type: application/json" \
   -d @examples/simple_schema.json
@@ -176,36 +144,44 @@ curl -X POST http://localhost:8000/api/v1/generate \
 
 ---
 
-## Example Schemas
+## Sorun Giderme
 
-Try different complexity levels:
-
+### ImportError: No module named 'X'
+**Çözüm:**
 ```bash
-# Simple (2 tables)
-backbone-ai generate --schema examples/simple_schema.json
+pip install -r requirements.txt
+```
 
-# Medium (5 tables)
-backbone-ai generate --schema examples/blog_schema.json
+### API anahtarı yok
+**Çözüm:**
+```bash
+echo "OPENAI_API_KEY=sk-your-key" >> .env
+```
 
-# Complex (10+ tables)
-backbone-ai generate --schema examples/ecommerce_schema.json
+### Rate limit aşıldı
+**Çözüm:** Google'a geç (daha ucuz, daha yüksek limit)
+```bash
+DEFAULT_LLM_PROVIDER=google
+GOOGLE_API_KEY=your-google-key
 ```
 
 ---
 
-## Tips
+## Oluşturulan Kod Özellikleri
 
-1. **Start simple** - Use simple_schema.json first
-2. **Check output** - Review generated code before using
-3. **Customize** - Edit templates in `templates/` directory
-4. **Test** - Run `python test_static_analysis.py` to verify setup
-5. **Save money** - Use Google Gemini for testing ($0.001/1K tokens vs $0.03 for GPT-4)
+✅ **Modern SQLAlchemy 2.0** - En yeni syntax
+✅ **Type Hints** - Tam tip desteği
+✅ **Async Destek** - Hem sync hem async
+✅ **Otomatik Timestamps** - created_at, updated_at
+✅ **Soft Delete** - Veri silmeden işaretle
+✅ **İlişkiler** - Otomatik relationship'ler
+✅ **Helper Methods** - to_dict(), soft_delete()
 
 ---
 
-## Help
+## Yardım
 
-- Run tests: `python test_static_analysis.py`
-- Check config: `backbone-ai config`
-- Get help: `backbone-ai --help`
-- Report issues: https://github.com/vidinsight-miniflow/BackBone-AI/issues
+- Test: `python test_static_analysis.py`
+- Konfigürasyon: `backbone-ai config`
+- Yardım: `backbone-ai --help`
+- Issues: https://github.com/vidinsight-miniflow/BackBone-AI/issues

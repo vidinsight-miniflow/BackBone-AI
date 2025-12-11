@@ -174,8 +174,8 @@ class CodeGeneratorAgent(BaseAgent):
         Returns:
             str: Generated Python code
         """
-        # Use improved template with modern SQLAlchemy 2.0 syntax
-        template = self.jinja_env.get_template("model_improved.py.jinja2")
+        # Use modern SQLAlchemy 2.0 template
+        template = self.jinja_env.get_template("model.py.jinja2")
 
         # Prepare imports as strings
         imports = [imp.to_string() for imp in model.imports]
@@ -215,8 +215,8 @@ class CodeGeneratorAgent(BaseAgent):
         Returns:
             str: Generated Python code
         """
-        # Use improved mixins template with better functionality
-        template = self.jinja_env.get_template("mixins_improved.py.jinja2")
+        # Use mixins template
+        template = self.jinja_env.get_template("mixins.py.jinja2")
         content = template.render()
         return content
 
@@ -230,8 +230,8 @@ class CodeGeneratorAgent(BaseAgent):
         Returns:
             str: Generated Python code
         """
-        # Use improved database template with async support
-        template = self.jinja_env.get_template("database_improved.py.jinja2")
+        # Use database template with async support
+        template = self.jinja_env.get_template("database.py.jinja2")
 
         # Determine database URLs (both sync and async)
         db_url_templates = {

@@ -1,71 +1,126 @@
-"""
-{{ model.description or model.class_name + ' model.' }}
-"""
-{% if imports %}
-{% for import_stmt in imports %}
-{{ import_stmt }}
-{% endfor %}
+"""{{ model.description or (model.class_name + ' model.') }}"""
+from datetime import datetime
+from typing import Optional
+
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Enum as SQLEnum
+from sqlalchemy.orm import relationship, Mapped, mapped_column
+
+from .database import Base
+{% if model.mixins %}
+from .mixins import {{ model.mixins|join(', ') }}
 {% endif %}
 
 
-class {{ model.class_name }}{{ model.inheritance_chain }}:
-    """{{ model.description or model.class_name + ' model.' }}"""
+class {{ model.class_name }}(Base{% if model.mixins %}, {{ model.mixins|join(', ') }}{% endif %}):
+    """
+    {{ model.description or (model.class_name + ' model.') }}
+
+    Table: {{ model.table_name }}
+    {% if model.relationships %}
+    Relationships:
+    {% for rel in model.relationships %}
+    - {{ rel.name }}: {{ rel.type }} with {{ rel.target_class }}
+    {% endfor %}
+    {% endif %}
+    """
 
     __tablename__ = "{{ model.table_name }}"
-{% if columns %}
+
+    # Primary Key
+{% for column in model.columns %}
+{% if column.primary_key %}
+    {{ column.name }}: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+{% endif %}
+{% endfor %}
 
     # Columns
-{% for column in columns %}
-    {{ column.name }} = Column(
-{%- if column.type == "ForeignKey" %}
+{% for column in model.columns %}
+{% if not column.primary_key %}
+{% if column.type == "ForeignKey" %}
+    {{ column.name }}: Mapped[{% if column.nullable %}Optional[int]{% else %}int{% endif %}] = mapped_column(
+        ForeignKey("{{ column.target }}"{% if column.on_delete %}, ondelete="{{ column.on_delete }}"{% endif %}),
+        nullable={{ column.nullable|default(false)|tojson }}
+    )
+{% elif column.type == "String" %}
+    {{ column.name }}: Mapped[{% if column.nullable %}Optional[str]{% else %}str{% endif %}] = mapped_column(
+        String({{ column.length|default(255) }}),
+        nullable={{ column.nullable|default(false)|tojson }}{% if column.unique %},
+        unique=True{% endif %}{% if column.index %},
+        index=True{% endif %}{% if column.default %},
+        default="{{ column.default }}"{% endif %}
+    )
+{% elif column.type == "Text" %}
+    {{ column.name }}: Mapped[{% if column.nullable %}Optional[str]{% else %}str{% endif %}] = mapped_column(
+        Text,
+        nullable={{ column.nullable|default(false)|tojson }}
+    )
+{% elif column.type == "Integer" %}
+    {{ column.name }}: Mapped[{% if column.nullable %}Optional[int]{% else %}int{% endif %}] = mapped_column(
         Integer,
-        ForeignKey("{{ column.kwargs.foreign_key }}"{% if column.kwargs.on_delete %}, ondelete="{{ column.kwargs.on_delete }}"{% endif %}),
-{%- elif column.type == "Enum" %}
-        Enum(
-            {%- for val in column.args[:-1] %}
-"{{ val }}", {% endfor %}
-            name="{{ column.args[-1] }}"
-        ),
-{%- elif column.type == "String" %}
-        String({{ column.args[0] if column.args else 255 }}),
-{%- elif column.type == "Numeric" %}
-        Numeric({% if column.args %}{{ column.args|join(', ') }}{% endif %}),
-{%- else %}
-        {{ column.type }}{% if column.args %}({{ column.args|join(', ') }}){% endif %},
-{%- endif %}
-{%- for key, value in column.kwargs.items() %}
-{%- if key not in ['foreign_key', 'on_delete'] %}
-        {{ key }}={{ value|tojson }},
-{%- endif %}
-{%- endfor %}
-    ){% if column.comment %}  # {{ column.comment }}{% endif %}
-{% endfor %}
+        nullable={{ column.nullable|default(false)|tojson }}{% if column.default %},
+        default={{ column.default }}{% endif %}
+    )
+{% elif column.type == "Boolean" %}
+    {{ column.name }}: Mapped[{% if column.nullable %}Optional[bool]{% else %}bool{% endif %}] = mapped_column(
+        Boolean,
+        nullable={{ column.nullable|default(false)|tojson }},
+        default={{ column.default|default(false)|tojson }}
+    )
+{% elif column.type == "DateTime" %}
+    {{ column.name }}: Mapped[{% if column.nullable %}Optional[datetime]{% else %}datetime{% endif %}] = mapped_column(
+        DateTime,
+        nullable={{ column.nullable|default(false)|tojson }}{% if column.default == "now" %},
+        default=datetime.utcnow{% endif %}
+    )
+{% elif column.type == "Enum" %}
+    {{ column.name }}: Mapped[{% if column.nullable %}Optional[str]{% else %}str{% endif %}] = mapped_column(
+        SQLEnum({% for val in column.values %}"{{ val }}"{% if not loop.last %}, {% endif %}{% endfor %}, name="{{ model.table_name }}_{{ column.name }}_enum"),
+        nullable={{ column.nullable|default(false)|tojson }}{% if column.default %},
+        default="{{ column.default }}"{% endif %}
+    )
+{% else %}
+    {{ column.name }}: Mapped[{% if column.nullable %}Optional[{{ column.type|lower }}]{% else %}{{ column.type|lower }}{% endif %}] = mapped_column(
+        {{ column.type }},
+        nullable={{ column.nullable|default(false)|tojson }}
+    )
 {% endif %}
-{% if relationships %}
+{% endif %}
+{% endfor %}
 
     # Relationships
-{% for rel in relationships %}
-    {{ rel.name }} = relationship(
+{% for rel in model.relationships %}
+{% if rel.type == "one_to_many" %}
+    {{ rel.name }}: Mapped[list["{{ rel.target_class }}"]] = relationship(
+        "{{ rel.target_class }}",
+        back_populates="{{ rel.back_populates }}"
+    )
+{% elif rel.type == "many_to_one" %}
+    {{ rel.name }}: Mapped["{{ rel.target_class }}"] = relationship(
+        "{{ rel.target_class }}",
+        back_populates="{{ rel.back_populates }}"
+    )
+{% elif rel.type == "one_to_one" %}
+    {{ rel.name }}: Mapped[Optional["{{ rel.target_class }}"]] = relationship(
         "{{ rel.target_class }}",
         back_populates="{{ rel.back_populates }}",
-{%- if rel.kwargs %}
-{%- for key, value in rel.kwargs.items() %}
-        {{ key }}={{ value|tojson }},
-{%- endfor %}
-{%- endif %}
+        uselist=False
     )
-{% endfor %}
 {% endif %}
+{% endfor %}
 
     def __repr__(self) -> str:
-        """String representation of {{ model.class_name }}."""
-{%- if columns %}
-{%- set pk_columns = columns|selectattr('kwargs.primary_key', 'equalto', true)|list %}
-{%- if pk_columns %}
-        return f"<{{ model.class_name }}({% for pk in pk_columns %}{{ pk.name }}={self.{{ pk.name }}}{% if not loop.last %}, {% endif %}{% endfor %})>"
-{%- else %}
+        """String representation."""
+{% set pk_col = model.columns|selectattr('primary_key')|first %}
+{% if pk_col %}
+        return f"<{{ model.class_name }}(id={self.{{ pk_col.name }}})>"
+{% else %}
         return f"<{{ model.class_name }}()>"
-{%- endif %}
-{%- else %}
-        return f"<{{ model.class_name }}()>"
-{%- endif %}
+{% endif %}
+
+    def to_dict(self) -> dict:
+        """Convert model to dictionary."""
+        return {
+{% for column in model.columns %}
+            "{{ column.name }}": self.{{ column.name }},
+{% endfor %}
+        }
