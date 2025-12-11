@@ -78,6 +78,25 @@ class CodeGeneratorAgent(BaseAgent):
             trim_blocks=True,
             lstrip_blocks=True,
         )
+        
+        # Add custom filter for Python boolean values
+        def python_bool(value):
+            """Convert value to Python boolean string."""
+            if isinstance(value, bool):
+                return "True" if value else "False"
+            elif value is None:
+                return "None"
+            elif isinstance(value, str):
+                return f'"{value}"'
+            return str(value)
+        
+        # Add test for boolean type
+        def is_boolean(value):
+            """Check if value is boolean."""
+            return isinstance(value, bool)
+        
+        self.jinja_env.filters['python_bool'] = python_bool
+        self.jinja_env.tests['boolean'] = is_boolean
 
         logger.info(
             f"Code Generator Agent initialized "
@@ -299,6 +318,10 @@ class CodeGeneratorAgent(BaseAgent):
 
         except ImportError:
             logger.warning("Black not installed, skipping code formatting")
+            return code
+        except black.InvalidInput as e:
+            logger.warning(f"Code formatting failed (syntax error): {e}")
+            # Return original code if Black can't format it (syntax errors)
             return code
         except Exception as e:
             logger.warning(f"Code formatting failed: {e}")

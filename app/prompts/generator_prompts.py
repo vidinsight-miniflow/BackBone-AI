@@ -20,9 +20,9 @@ For each model, generate a complete Python file with:
 
 **Structure:**
 ```python
-"""
+\"\"\"
 Model docstring.
-"""
+\"\"\"
 
 # Imports (organized)
 from sqlalchemy import Column, Integer, String, ForeignKey
@@ -32,7 +32,7 @@ from app.models.mixins import TimestampMixin
 
 # Model class
 class User(Base, TimestampMixin):
-    """User model docstring."""
+    \"\"\"User model docstring.\"\"\"
 
     __tablename__ = "users"
 
@@ -135,9 +135,7 @@ posts = relationship(
 
 **__init__.py:**
 ```python
-\"\"\"
-Project models.
-\"\"\"
+\"\"\"Project models.\"\"\"
 
 from .user import User
 from .post import Post
@@ -150,9 +148,7 @@ __all__ = [
 
 **mixins.py:**
 ```python
-\"\"\"
-Database mixins for common patterns.
-\"\"\"
+\"\"\"Database mixins for common patterns.\"\"\"
 
 from datetime import datetime
 from sqlalchemy import Boolean, Column, DateTime
@@ -166,9 +162,7 @@ class TimestampMixin:
 
 **database.py:**
 ```python
-\"\"\"
-Database configuration and session management.
-\"\"\"
+\"\"\"Database configuration and session management.\"\"\"
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base

@@ -84,12 +84,9 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
             # Your async database operations
             await db.commit()
     """
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
-
+    # Import all models to register them with Base.metadata
+    # Note: Explicit imports are preferred over import *
+    from app.models import Post, User  # noqa: F401
 
 def create_tables():
     """Create all tables in the database."""

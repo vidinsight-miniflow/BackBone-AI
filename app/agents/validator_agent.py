@@ -98,6 +98,10 @@ class ValidatorAgent(BaseAgent):
 
         return DummyLLM()  # type: ignore
 
+    def _default_system_prompt(self) -> str:
+        """Default system prompt for the validator agent."""
+        return "Code Quality Validator Agent"
+
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Execute code validation.
