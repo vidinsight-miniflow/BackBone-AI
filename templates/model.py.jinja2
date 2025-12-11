@@ -11,7 +11,13 @@ class {{ model.class_name }}{{ model.inheritance_chain }}:
     """{{ model.description or model.class_name + ' model.' }}"""
 
     __tablename__ = "{{ model.table_name }}"
-{% if columns %}
+
+    # Primary Key
+{% for column in model.columns %}
+{% if column.primary_key %}
+    {{ column.name }}: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+{% endif %}
+{% endfor %}
 
     # Columns
 {% for column in columns %}
@@ -52,8 +58,19 @@ class {{ model.class_name }}{{ model.inheritance_chain }}:
 {% endif %}
 {% if relationships %}
     # Relationships
-{% for rel in relationships %}
-    {{ rel.name }} = relationship(
+{% for rel in model.relationships %}
+{% if rel.type == "one_to_many" %}
+    {{ rel.name }}: Mapped[list["{{ rel.target_class }}"]] = relationship(
+        "{{ rel.target_class }}",
+        back_populates="{{ rel.back_populates }}"
+    )
+{% elif rel.type == "many_to_one" %}
+    {{ rel.name }}: Mapped["{{ rel.target_class }}"] = relationship(
+        "{{ rel.target_class }}",
+        back_populates="{{ rel.back_populates }}"
+    )
+{% elif rel.type == "one_to_one" %}
+    {{ rel.name }}: Mapped[Optional["{{ rel.target_class }}"]] = relationship(
         "{{ rel.target_class }}",
         back_populates="{{ rel.back_populates }}",
 {%- if rel.kwargs %}

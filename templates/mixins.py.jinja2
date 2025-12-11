@@ -1,58 +1,78 @@
 """
-Database mixins for common patterns.
+Common mixins for SQLAlchemy models.
 
-This module provides reusable mixins for common database patterns
-such as timestamps and soft deletes.
+These mixins provide reusable functionality for models:
+- TimestampMixin: Automatic created_at and updated_at timestamps
+- SoftDeleteMixin: Soft delete functionality with deleted_at field
 """
-
 from datetime import datetime
+from typing import Optional
 
-from sqlalchemy import Boolean, Column, DateTime
+from sqlalchemy import Column, DateTime, Boolean
+from sqlalchemy.orm import Mapped, mapped_column
 
 
 class TimestampMixin:
     """
-    Mixin that adds timestamp fields to a model.
+    Mixin that adds created_at and updated_at timestamp fields.
 
-    Attributes:
-        created_at: Timestamp when the record was created
-        updated_at: Timestamp when the record was last updated
+    Usage:
+        class MyModel(Base, TimestampMixin):
+            __tablename__ = "my_table"
+            # ... other fields
     """
 
-    created_at = Column(
+    created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
         nullable=False,
+        comment="Timestamp when record was created"
     )
-    updated_at = Column(
+
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
         nullable=False,
+        comment="Timestamp when record was last updated"
     )
 
 
 class SoftDeleteMixin:
     """
-    Mixin that adds soft delete functionality to a model.
+    Mixin that adds soft delete functionality.
 
-    Instead of physically deleting records, this mixin marks them
-    as deleted and records when the deletion occurred.
+    Instead of deleting records, marks them as deleted with a timestamp.
 
-    Attributes:
-        is_deleted: Flag indicating if the record is deleted
-        deleted_at: Timestamp when the record was deleted
+    Usage:
+        class MyModel(Base, SoftDeleteMixin):
+            __tablename__ = "my_table"
+            # ... other fields
+
+        # To soft delete:
+        instance.soft_delete()
+
+        # To restore:
+        instance.restore()
+
+        # To check if deleted:
+        if instance.is_deleted:
+            print("This record is deleted")
     """
 
-    is_deleted = Column(
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime,
+        nullable=True,
+        default=None,
+        comment="Timestamp when record was soft deleted"
+    )
+
+    is_deleted: Mapped[bool] = mapped_column(
         Boolean,
         default=False,
         nullable=False,
         index=True,
-    )
-    deleted_at = Column(
-        DateTime,
-        nullable=True,
+        comment="Flag indicating if record is soft deleted"
     )
 
     def soft_delete(self) -> None:
@@ -61,6 +81,26 @@ class SoftDeleteMixin:
         self.deleted_at = datetime.utcnow()
 
     def restore(self) -> None:
-        """Restore a soft-deleted record."""
+        """Restore a soft deleted record."""
         self.is_deleted = False
         self.deleted_at = None
+
+
+class UUIDMixin:
+    """
+    Mixin that adds a UUID primary key.
+
+    Usage:
+        class MyModel(Base, UUIDMixin):
+            __tablename__ = "my_table"
+            # No need to define id field
+    """
+
+    import uuid
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid.uuid4()),
+        comment="UUID primary key"
+    )
